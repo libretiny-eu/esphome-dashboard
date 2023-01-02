@@ -16,7 +16,8 @@ export type SupportedPlatforms =
   | "ESP32S2"
   | "ESP32S3"
   | "ESP32C3"
-  | "RP2040";
+  | "RP2040"
+  | "LIBRETUYA";
 
 export type PlatformData = {
   label: string;
@@ -56,6 +57,11 @@ export const supportedPlatforms: { [key in SupportedPlatforms]: PlatformData } =
       label: "Raspberry Pi Pico W",
       showInPickerTitle: false,
       defaultBoard: "rpipicow",
+    },
+    LIBRETUYA: {
+      label: "LibreTuya",
+      showInPickerTitle: true,
+      defaultBoard: null,
     },
   };
 
