@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="esphome-dashboard",
+    name="libretuya-esphome-dashboard",
     version="20230120.0",
     description="ESPHome dashboard",
     url="https://github.com/esphome/dashboard",
