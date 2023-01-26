@@ -9,7 +9,7 @@ import "@material/mwc-checkbox";
 import "@material/mwc-list/mwc-list-item.js";
 import "@material/mwc-circular-progress";
 import type { TextField } from "@material/mwc-textfield";
-import { connect, ESPLoader } from "esp-web-flasher";
+import { ESPLoader } from "esptool-js";
 import {
   allowsWebSerial,
   metaChevronRight,
@@ -24,11 +24,10 @@ import {
   CreateConfigParams,
   createConfiguration,
   deleteConfiguration,
-  getConfiguration,
   getConfigurationApiKey,
 } from "../api/configuration";
 import { getSupportedPlatformBoards, SupportedBoards } from "../api/boards";
-import { getConfigurationFiles, flashFiles } from "../flash";
+import { getConfigurationFiles, flashFiles } from "../web-serial/flash";
 import { subscribeOnlineStatus } from "../api/online-status";
 import { refreshDevices } from "../api/devices";
 import {
@@ -40,9 +39,10 @@ import {
 import { openInstallChooseDialog } from "../install-choose";
 import { esphomeDialogStyles } from "../styles";
 import { openNoPortPickedDialog } from "../no-port-picked";
-import { cleanName, stripDash } from "../util/name-validator";
 import { copyToClipboard } from "../util/copy-clipboard";
 import { sleep } from "../util/sleep";
+import { createESPLoader } from "../web-serial/create-esploader";
+import { resetSerialDevice } from "../web-serial/reset-serial-device";
 
 const OK_ICON = "🎉";
 const WARNING_ICON = "👀";
@@ -72,6 +72,8 @@ export class ESPHomeWizardDialog extends LitElement {
 
   private _wifi?: { ssid: string; password: string };
 
+  private _configFilename!: string;
+
   @state() private _writeProgress?: number;
 
   private _supportedBoards?: SupportedBoards;
@@ -91,7 +93,7 @@ export class ESPHomeWizardDialog extends LitElement {
   @state() private _error?: string;
 
   private _installed = false;
-  private _apiKey?: string;
+  private _apiKey?: string | null;
 
   @query("mwc-textfield[name=name]") private _inputName!: TextField;
   @query("mwc-textfield[name=ssid]") private _inputSSID!: TextField;
@@ -262,15 +264,7 @@ export class ESPHomeWizardDialog extends LitElement {
     const content = html`
       ${this._error ? html`<div class="error">${this._error}</div>` : ""}
 
-      <mwc-textfield
-        label="Name"
-        name="name"
-        required
-        pattern="^[a-z0-9-]+$"
-        helper="Lowercase letters (a-z), numbers (0-9) or dash (-)"
-        @input=${this._cleanNameInput}
-        @blur=${this._cleanNameBlur}
-      ></mwc-textfield>
+      <mwc-textfield label="Name" name="name" required></mwc-textfield>
 
       ${this._hasWifiSecrets
         ? html`
@@ -558,17 +552,6 @@ export class ESPHomeWizardDialog extends LitElement {
     }
   }
 
-  private _cleanNameInput = (ev: InputEvent) => {
-    this._error = undefined;
-    const input = ev.target as TextField;
-    input.value = cleanName(input.value);
-  };
-
-  private _cleanNameBlur = (ev: Event) => {
-    const input = ev.target as TextField;
-    input.value = stripDash(input.value);
-  };
-
   private _cleanSSIDBlur = (ev: Event) => {
     const input = ev.target as TextField;
     // Remove starting and trailing whitespace
@@ -583,24 +566,15 @@ export class ESPHomeWizardDialog extends LitElement {
       ? true
       : this._inputSSID.reportValidity();
 
-    if (!nameValid || !ssidValid) {
-      if (!nameValid) {
-        nameInput.focus();
-      } else {
-        this._inputSSID.focus();
-      }
+    if (!nameValid) {
+      nameInput.focus();
+      return;
+    } else if (!ssidValid) {
+      this._inputSSID.focus();
       return;
     }
 
     const name = nameInput.value;
-
-    try {
-      await getConfiguration(`${name}.yaml`);
-      this._error = "Name already in use";
-      return;
-    } catch (err) {
-      // This is expected.
-    }
 
     this._data.name = name;
 
@@ -650,7 +624,10 @@ export class ESPHomeWizardDialog extends LitElement {
       if (this._wifi) {
         await storeWifiSecrets(this._wifi.ssid, this._wifi.password);
       }
-      await createConfiguration(this._data as CreateConfigParams);
+      const response = await createConfiguration(
+        this._data as CreateConfigParams
+      );
+      this._configFilename = response.configuration;
       this._apiKey = await getConfigurationApiKey(this._configFilename);
       refreshDevices();
       this._state = "done";
@@ -672,8 +649,10 @@ export class ESPHomeWizardDialog extends LitElement {
     let esploader: ESPLoader | undefined;
     let removeConfig = false;
     try {
+      let port: SerialPort | undefined;
+
       try {
-        esploader = await connect(console);
+        port = await navigator.serial.requestPort();
       } catch (err: any) {
         console.error(err);
         if ((err as DOMException).name === "NotFoundError") {
@@ -684,10 +663,13 @@ export class ESPHomeWizardDialog extends LitElement {
         return;
       }
 
+      esploader = createESPLoader(port);
+
       this._state = "connecting_webserial";
 
       try {
-        await esploader.initialize();
+        await esploader.main_fn();
+        await esploader.flash_id();
       } catch (err) {
         console.error(err);
         this._state = "connect_webserial";
@@ -699,18 +681,21 @@ export class ESPHomeWizardDialog extends LitElement {
       this._state = "prepare_flash";
 
       let platform: SupportedPlatforms;
-      const chipFamily = esploader.chipFamily.toString();
+      const chipFamily = esploader.chip.CHIP_NAME;
       if (Object.keys(chipFamilyToPlatform).includes(chipFamily)) {
         platform = chipFamilyToPlatform[chipFamily];
       } else {
         this._state = "connect_webserial";
-        this._error = `Unable to identify the connected device (${esploader.chipFamily}).`;
+        this._error = `Unable to identify the connected device (${esploader.chip.CHIP_NAME}).`;
         return;
       }
       this._data.board = supportedPlatforms[platform].defaultBoard ?? undefined;
 
       try {
-        await createConfiguration(this._data as CreateConfigParams);
+        const { configuration } = await createConfiguration(
+          this._data as CreateConfigParams
+        );
+        this._configFilename = configuration;
       } catch (err) {
         console.error(err);
         this._state = "connect_webserial";
@@ -751,7 +736,7 @@ export class ESPHomeWizardDialog extends LitElement {
       this._installed = true;
 
       // Reset the device so it can load new firmware and come online
-      await esploader.hardReset();
+      await resetSerialDevice(esploader.transport);
 
       this._state = "wait_come_online";
 
@@ -779,21 +764,13 @@ export class ESPHomeWizardDialog extends LitElement {
     } finally {
       this._busy = false;
       if (esploader) {
-        if (esploader.connected) {
-          console.log("Disconnecting esp");
-          await esploader.disconnect();
-        }
         console.log("Closing port");
-        await esploader.port.close();
+        await esploader.transport.disconnect();
       }
       if (removeConfig) {
         await deleteConfiguration(this._configFilename);
       }
     }
-  }
-
-  private get _configFilename(): string {
-    return `${this._data.name!}.yaml`;
   }
 
   private async _handleClose() {
@@ -813,9 +790,6 @@ export class ESPHomeWizardDialog extends LitElement {
     css`
       :host {
         --mdc-dialog-max-width: 390px;
-      }
-      mwc-textfield[name="name"] + div {
-        margin-top: 18px;
       }
       .center {
         text-align: center;

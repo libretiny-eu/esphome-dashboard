@@ -25,7 +25,7 @@ export interface Configuration {
 }
 
 export const createConfiguration = (params: CreateConfigParams) =>
-  fetchApiText("./wizard", {
+  fetchApiJson<{ configuration: string }>("./wizard", {
     method: "post",
     body: JSON.stringify(params),
   });
@@ -81,7 +81,7 @@ export const getJsonConfig = async (
 
 export const getConfigurationApiKey = async (
   configuration: string
-): Promise<string | undefined> => {
+): Promise<string | null> => {
   const config = await getJsonConfig(configuration);
-  return config?.api?.encryption?.key;
+  return config?.api?.encryption?.key || null;
 };

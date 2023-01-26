@@ -3,7 +3,7 @@ import { customElement } from "lit/decorators.js";
 import "@material/mwc-dialog";
 import "@material/mwc-button";
 import { openInstallWebDialog } from "../../../src/install-web";
-import { FileToFlash } from "../../../src/flash";
+import { FileToFlash } from "../../../src/web-serial/flash";
 import { esphomeDialogStyles } from "../../../src/styles";
 
 @customElement("esphome-install-adoptable-dialog")
@@ -14,7 +14,7 @@ class ESPHomeInstallAdoptableDialog extends LitElement {
     return html`
       <mwc-dialog
         open
-        heading="Prepare your device for adoption"
+        heading="Prepare your device for first use"
         scrimClickAction
         @closed=${this._handleClose}
       >
@@ -30,7 +30,7 @@ class ESPHomeInstallAdoptableDialog extends LitElement {
 
         <mwc-button
           slot="primaryAction"
-          label="Make Adoptable"
+          label="Install"
           @click=${this._handleInstall}
         ></mwc-button>
         <mwc-button
@@ -51,15 +51,27 @@ class ESPHomeInstallAdoptableDialog extends LitElement {
           if (platform !== "ESP8266" && platform !== "ESP32") {
             throw new Error("Only ESP8266 and ESP32 are currently supported");
           }
+          const platformLower = platform.toLowerCase();
           const resp = await fetch(
-            `/static_web/firmware/${platform.toLowerCase()}.bin`
+            `https://firmware.esphome.io/esphome-web-${platformLower}/esphome-web-${platformLower}.bin`
           );
           if (!resp.ok) {
             throw new Error(
               `Downlading ESPHome firmware for ${platform} failed (${resp.status})`
             );
           }
-          return [{ data: await resp.arrayBuffer(), offset: 0 }];
+
+          const reader = new FileReader();
+          const blob = await resp.blob();
+
+          const data = await new Promise<string>((resolve) => {
+            reader.addEventListener("load", () =>
+              resolve(reader.result as string)
+            );
+            reader.readAsBinaryString(blob);
+          });
+
+          return [{ data, address: 0 }];
         },
         onClose(success) {
           if (!success) {

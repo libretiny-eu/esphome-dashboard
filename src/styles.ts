@@ -12,6 +12,9 @@ export const esphomeCardStyles = css`
   .flex {
     flex: 1;
   }
+  mwc-button {
+    line-height: 1em;
+  }
   .card-actions {
     display: flex;
     padding: 4px;
@@ -32,6 +35,10 @@ export const esphomeCardStyles = css`
 `;
 
 export const esphomeDialogStyles = css`
+  :host {
+    --mdc-dialog-content-ink-color: #212121;
+  }
+
   a {
     color: var(--mdc-theme-primary);
   }
@@ -46,6 +53,7 @@ export const esphomeDialogStyles = css`
     margin-top: 0;
   }
 
+  mwc-textfield + div,
   div + div {
     margin-top: 16px;
   }

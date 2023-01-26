@@ -60,8 +60,9 @@ class ESPHomeConfiguredDeviceCard extends LitElement {
     const content: TemplateResult[] = [];
 
     if (
-      this.device.configuration !== `${this.device.name}.yaml` &&
-      this.device.configuration !== `${this.device.name}.yml`
+      this.device.friendly_name ||
+      (this.device.configuration !== `${this.device.name}.yaml` &&
+        this.device.configuration !== `${this.device.name}.yml`)
     ) {
       content.push(html`
         <div class="device-config-path tooltip-container">
@@ -95,7 +96,9 @@ class ESPHomeConfiguredDeviceCard extends LitElement {
           "--status-color": status === undefined ? "" : STATUS_COLORS[status],
         })}
       >
-        <div class="card-header">${this.device.name}</div>
+        <div class="card-header">
+          ${this.device.friendly_name || this.device.name}
+        </div>
 
         ${content.length
           ? html`<div class="card-content flex">${content}</div>`
@@ -140,57 +143,65 @@ class ESPHomeConfiguredDeviceCard extends LitElement {
             @action=${this._handleOverflowAction}
           >
             <mwc-icon-button slot="trigger" icon="more_vert"></mwc-icon-button>
-            <mwc-list-item graphic="icon"
-              >Validate<esphome-svg-icon
+            <mwc-list-item graphic="icon">
+              Validate
+              <esphome-svg-icon
                 slot="graphic"
                 .path=${mdiSpellcheck}
-              ></esphome-svg-icon
-            ></mwc-list-item>
-            <mwc-list-item graphic="icon"
-              >Install<esphome-svg-icon
+              ></esphome-svg-icon>
+            </mwc-list-item>
+            <mwc-list-item graphic="icon">
+              Install
+              <esphome-svg-icon
                 slot="graphic"
                 .path=${mdiUploadNetwork}
-              ></esphome-svg-icon
-            ></mwc-list-item>
-            <mwc-list-item graphic="icon"
-              >Show API Key<esphome-svg-icon
+              ></esphome-svg-icon>
+            </mwc-list-item>
+            <mwc-list-item graphic="icon">
+              Show API Key
+              <esphome-svg-icon
                 slot="graphic"
                 .path=${mdiKey}
-              ></esphome-svg-icon
-            ></mwc-list-item>
-            <mwc-list-item graphic="icon"
-              >Download YAML<esphome-svg-icon
+              ></esphome-svg-icon>
+            </mwc-list-item>
+            <mwc-list-item graphic="icon">
+              Download YAML
+              <esphome-svg-icon
                 slot="graphic"
                 .path=${mdiCodeBraces}
-              ></esphome-svg-icon
-            ></mwc-list-item>
-            <mwc-list-item graphic="icon"
-              >Rename<esphome-svg-icon
+              ></esphome-svg-icon>
+            </mwc-list-item>
+            <mwc-list-item graphic="icon">
+              Rename hostname
+              <esphome-svg-icon
                 slot="graphic"
                 .path=${mdiRenameBox}
-              ></esphome-svg-icon
-            ></mwc-list-item>
-            <mwc-list-item graphic="icon"
-              >Clean Build Files<esphome-svg-icon
+              ></esphome-svg-icon>
+            </mwc-list-item>
+            <mwc-list-item graphic="icon">
+              Clean Build Files
+              <esphome-svg-icon
                 slot="graphic"
                 .path=${mdiBroom}
-              ></esphome-svg-icon
-            ></mwc-list-item>
+              ></esphome-svg-icon>
+            </mwc-list-item>
             <li divider role="separator"></li>
-            <mwc-list-item class="warning" graphic="icon"
-              >Delete<esphome-svg-icon
+            <mwc-list-item class="warning" graphic="icon">
+              Delete
+              <esphome-svg-icon
                 class="warning"
                 slot="graphic"
                 .path=${mdiDelete}
-              ></esphome-svg-icon
-            ></mwc-list-item>
+              ></esphome-svg-icon>
+            </mwc-list-item>
             ${"mqtt" in this.device.loaded_integrations
-              ? html`<mwc-list-item graphic="icon"
-                  >Clean MQTT<esphome-svg-icon
+              ? html`<mwc-list-item graphic="icon">
+                  Clean MQTT
+                  <esphome-svg-icon
                     slot="graphic"
                     .path=${mdiBroom}
-                  ></esphome-svg-icon
-                ></mwc-list-item>`
+                  ></esphome-svg-icon>
+                </mwc-list-item>`
               : ""}
           </esphome-button-menu>
         </div>
