@@ -10,7 +10,7 @@ export type SupportedPlatforms =
   | "ESP32S3"
   | "ESP32C3"
   | "RP2040"
-  | "LIBRETUYA";
+  | "LIBRETINY";
 
 export type PlatformData = {
   label: string;
@@ -51,8 +51,8 @@ export const supportedPlatforms: { [key in SupportedPlatforms]: PlatformData } =
       showInPickerTitle: false,
       defaultBoard: "rpipicow",
     },
-    LIBRETUYA: {
-      label: "LibreTuya",
+    LIBRETINY: {
+      label: "LibreTiny",
       showInPickerTitle: true,
       defaultBoard: null,
     },
