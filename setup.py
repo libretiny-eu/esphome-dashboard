@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="libretiny-esphome-dashboard",
-    version="20230621.0",
+    version="20230711.0",
     description="ESPHome dashboard",
     url="https://github.com/esphome/dashboard",
     author="Nabu Casa",
